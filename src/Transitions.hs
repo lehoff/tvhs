@@ -1,8 +1,9 @@
 module Transitions
 where
 
-data Action = HalftimeWhistle
-            | FulltimeWhistle
+data WhistleTime = Halftime | Fulltime deriving (Show)
+
+data Action = Whistle WhistleTime 
             | Both
             | Home
             | Away
@@ -11,9 +12,8 @@ data Action = HalftimeWhistle
 
 data Time = FirstHalf Int
           | SecondHalf Int
-          | Halftime
-          | Fulltime
-                      deriving (Show)
+          | Halted WhistleTime
+          deriving (Show)
 
 type Score = (Int, Int)
 
@@ -22,6 +22,11 @@ data TeamStrength =  TeamStrength { attack :: Float,
                                   } deriving (Show)
 
 type Standing = (Time, Score)
+
+data WhistleProbability = NoWhistle
+                        | Perhaps Float WhistleTime
+                        | Certain WhistleTime
+                        deriving (Show)
 
 initialStanding :: Standing
 initialStanding = (FirstHalf(0), (0,0))
@@ -33,9 +38,7 @@ leicester :: TeamStrength
 leicester = TeamStrength {attack = 1.735, defense = 0.533}
 
 nextStanding :: Standing -> Action -> Standing
-nextStanding (_, score) HalftimeWhistle = (Halftime, score)
-
-nextStanding (_, score) FulltimeWhistle = (Fulltime, score)
+nextStanding (_, score) (Whistle half) = (Halted half, score)
 
 nextStanding (time, score) goal_action =
   (nextMinute time, updateScore score goal_action)
@@ -43,7 +46,8 @@ nextStanding (time, score) goal_action =
 nextMinute :: Time -> Time
 nextMinute (FirstHalf m) = FirstHalf $ m + 1
 nextMinute (SecondHalf m) = SecondHalf $ m + 1
-nextMinute Halftime = SecondHalf 45
+nextMinute (Halted Halftime)  = SecondHalf 45
+-- perhaps add a case for Halted Fulltime that returns an error?
 
 updateScore :: Score -> Action -> Score
 updateScore score None = score
@@ -53,31 +57,45 @@ updateScore (h, a) Away = (h, a+1)
 
 next :: TeamStrength -> TeamStrength -> Standing -> [(Action, Float)]
 next home away standing =
-  adjustGoalTransitionsWithWhistle whistleProb half gt
+  adjustGoalTransitionsWithWhistle whistleProb gt
   where
-    (whistleProb, half) = whistleProbability standing
+    whistleProb = whistleProbability standing
     gt = goalTransistions home away standing
 
-adjustGoalTransitionsWithWhistle prob half gt = gt
+adjustGoalTransitionsWithWhistle :: WhistleProbability -> [(Action, Float)] -> [(Action, Float)]
+adjustGoalTransitionsWithWhistle NoWhistle  gt = gt
+adjustGoalTransitionsWithWhistle (Certain half) gt = [(Whistle half, 1.0)]
+adjustGoalTransitionsWithWhistle (Perhaps prob half) gt =
+  (Whistle half, prob) : (multiply gt (1 - prob))
+
+multiply gt p =
+  map (\(action, p0) -> (action, p*p0)) gt
+  
+   
+  
+  
 
 
-whistleProbability :: Standing -> (Float, Time)
+whistleProbability :: Standing -> WhistleProbability
 whistleProbability ((FirstHalf m), _) =
   whistleProbabilityInternal extras (m - 45) Halftime
   where
     extras = map (\m -> m/100) [1, 37, 37, 17, 5, 3]
 whistleProbability ((SecondHalf m), _) =
-  whistleProbabilityInternal extras (m - 45) Fulltime
+  whistleProbabilityInternal extras (m - 90) Fulltime
   where
     extras = map (\m -> m/100) [1, 1, 3, 25, 37, 22, 7, 3, 1]
 
-whistleProbabilityInternal :: [Float] -> Int -> Time -> (Float, Time)
-whistleProbabilityInternal extras stoppage half =
-  (f / s, half)
+whistleProbabilityInternal :: [Float] -> Int -> WhistleTime -> WhistleProbability
+whistleProbabilityInternal extras stoppage half
+  | stoppage < 0 = NoWhistle
+  | (stoppage+1) >= length(extras) = Certain half
+  | otherwise = Perhaps prop half
   where
+    prop = f / s
     f : fs = reverse (take (stoppage+1) extras)
     s' = (1 - sum fs)
-    s = fromInteger (round $ s * 100) / 100
+    s = fromInteger (round $ s' * 100) / 100
 
 goalTransistions :: TeamStrength -> TeamStrength -> Standing -> [(Action, Float)]
 goalTransistions home away (time, score) =
