@@ -9,6 +9,8 @@ import TrueValue.Transitions as T
 import qualified Data.Map.Strict as Map
 import Data.Tuple
 import Data.List
+import Debug.Trace
+
 
 data NodeName = OutOfBounds
               | Final T.Score
@@ -18,14 +20,16 @@ data NodeName = OutOfBounds
 data Match = Match 
   { finalScores :: [NodeName]
   , nodes :: Map.Map NodeName Int
+  , done :: [NodeName]
   , graph :: Graph.Gr NodeName Float}
   deriving (Show)
  
 initialMatch = Match { finalScores = finals,
                        nodes = ns,
+                       done = [],
                        graph = graph'}
   where 
-    validResults = [(h,a) | h <- [0..1], a <- [0..1] ]
+    validResults = [(h,a) | h <- [0..10], a <- [0..10] ]
     fulltime = zip [1..] [Standing (T.Fulltime, score) | score <- validResults]
     graph = foldl (\g node -> Graph.insNode node g) Graph.empty fulltime
     graph' = Graph.insNode (0, OutOfBounds) graph 
@@ -39,21 +43,35 @@ computeMatch home away = forward
     forward = computeForward home away initialMatch
 
 computeForward :: T.TeamStrength -> T.TeamStrength -> Match -> Match
-computeForward home away match = computeForwardLoop (Standing T.initialStanding) home away match 
+computeForward home away match = computeForwardLoop [Standing T.initialStanding] home away match 
 
-computeForwardLoop :: NodeName -> T.TeamStrength -> T.TeamStrength -> Match -> Match
-computeForwardLoop OutOfBounds _ _ match = match
-computeForwardLoop nodeName@(Standing standing) home away match = match'''
+computeForwardLoop :: [NodeName] -> T.TeamStrength -> T.TeamStrength -> Match -> Match
+computeForwardLoop [] _ _ match = match
+computeForwardLoop (OutOfBounds:rest) home away match =
+  computeForwardLoop rest home away match
+computeForwardLoop ((Final _):rest) home away match =
+  computeForwardLoop rest home away match
+computeForwardLoop (nodeName:rest) home away match =
+  case elem nodeName $ done match of
+    True ->
+      computeForwardLoop rest home away match
+    False ->
+      let (match', newNodes) = executeForward nodeName home away match in
+        computeForwardLoop (newNodes ++ rest) home away match'
+        
+-- only to be called if the node isn't part of done yet
+executeForward :: NodeName -> T.TeamStrength -> T.TeamStrength -> Match -> (Match, [NodeName])
+executeForward nodeName@(Standing standing) home away match = (match'''', succNodeNames)
   where 
     match' = insertNode nodeName match
     actions = T.next home away standing
     nextNode = restrictStanding . T.nextStanding standing 
     succNodes = map (\(action, prob) -> (nextNode action, prob)) actions
-    -- now we just recurse to ensure that all successors are in the match
-    match'' = foldl (\m (s,_) -> computeForwardLoop s home away m) match' succNodes
-    -- and then we add edges to the successors, which now know are in the graph
+    succNodeNames = map fst succNodes
+    match'' = trace (show succNodeNames) $ foldl (\m node -> insertNode node m) match' succNodeNames
     match''' = foldl (\m (node,p) -> insertEdge m nodeName node p) match'' succNodes
-    
+    match'''' = match''' { done = nodeName : done match'''}
+--    match'''' = trace (show succNodeNames) $ computeForwardLoop (succNodeNames ++ rest) home away match'''     
 
 restrictStanding:: T.Standing -> NodeName
 restrictStanding (T.Fulltime, score) = Final score
