@@ -1,6 +1,9 @@
 module Main where
 
-import Transitions
-
+import TrueValue.Transitions as T
+import TrueValue.Match as M
 main :: IO ()
-main = someFunc
+main = print (length $ nodes match)
+  where
+    match = M.computeMatch T.liverpool T.leicester
+    
