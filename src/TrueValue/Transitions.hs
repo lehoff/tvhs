@@ -39,8 +39,8 @@ leicester :: TeamStrength
 leicester = TeamStrength {attack = 1.735, defense = 0.533}
 
 nextStanding :: Standing -> Action -> Standing
-nextStanding (_, score) (Whistle half) = (Halftime, score)
-
+nextStanding (_, score) (Whistle WHalftime) = (Halftime, score)
+nextStanding (_, score) (Whistle WFulltime) = (Fulltime, score)
 nextStanding (time, score) goal_action =
   (nextMinute time, updateScore score goal_action)
 
@@ -48,7 +48,7 @@ nextMinute :: Time -> Time
 nextMinute (FirstHalf m) = FirstHalf $ m + 1
 nextMinute (SecondHalf m) = SecondHalf $ m + 1
 nextMinute (Halftime)  = SecondHalf 45
--- perhaps add a case for Halted Fulltime that returns an error?
+
 
 updateScore :: Score -> Action -> Score
 updateScore score None = score

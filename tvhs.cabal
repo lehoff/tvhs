@@ -15,7 +15,7 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     TrueValue.Transitions, TrueValue.Match
+  exposed-modules:     TrueValue.Transitions, TrueValue.Match, TrueValue.Outcome
   build-depends:       base >= 4.7 && < 5
                      , fgl
                      , containers
