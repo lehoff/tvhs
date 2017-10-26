@@ -24,4 +24,23 @@ multiply :: Outcome -> Float -> Outcome
 multiply outcome x =
   Map.map (* x) outcome
 
+points :: Outcome -> (Float, Float)
+points outcome = (hp, ap)
+  where
+    dist = distribution outcome
+    draws = dist Map.! T.Draw
+    homewins = dist Map.! T.HomeWin
+    awaywins = dist Map.! T.AwayWin
+    hp = 3 * homewins + draws
+    ap = 3 * awaywins + draws
+    
+   
 
+distribution :: Outcome -> Map.Map T.Result Float
+distribution outcome = d
+  where
+    xs = Map.toList outcome
+    results = map (\(score, prob) -> (T.result score, prob)) xs
+    resultMaps = map ( uncurry Map.singleton) results
+    d = Map.unionsWith (+) resultMaps
+    

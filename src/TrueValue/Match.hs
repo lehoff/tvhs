@@ -12,8 +12,8 @@ import Debug.Trace
 
 
 data NodeName = OutOfBounds
-              | Final T.Score
               | Standing T.Standing
+              | Final T.Score
               deriving (Eq, Ord, Show)
 
 type Label = (NodeName, Outcome.Outcome)
@@ -25,6 +25,8 @@ data Match = Match
   , graph :: Graph.Gr Label Float}
   deriving (Show)
 
+maxDelta = 6
+
 type Context = Graph.Context Label Float
 
 initialMatch = Match { finalScores = finals,
@@ -32,7 +34,10 @@ initialMatch = Match { finalScores = finals,
                        done = [],
                        graph = graph'}
   where 
-    validResults = [(h,a) | h <- [0..10], a <- [0..10] ]
+    validResults =
+      concat [[T.NilNil, T.OneNil, T.NilOne, T.Even],
+              [T.Plus h | h <- [0..maxDelta]],
+              [T.Minus a | a <- [0..maxDelta]]]
     fulltime = zip [1..] [finalNode score | score <- validResults]
     graph = foldl (\g node -> Graph.insNode node g) Graph.empty fulltime
     graph' = Graph.insNode (0, (OutOfBounds, Outcome.empty)) graph 
@@ -89,6 +94,9 @@ getNodeOutcome match nodename = outcome
     context = getNodeContext match nodename
     outcome = outcomeFromLabel $ Graph.lab' context
 
+-- sortDesc :: Ordering a => [a] -> [a]
+-- sortDesc = sortBy (flip compare)
+
 --------------------------------------------------------------------------------
 -- raw compute functions
 --------------------------------------------------------------------------------
@@ -99,19 +107,26 @@ computeForward home away match = computeForwardLoop [Standing T.initialStanding]
 computeBackward :: Match -> Match
 computeBackward match = match'
   where
-    preFinals = concatMap (preNodes match)  $ finalScores match
-    preOutOfBounds =  preNodes match OutOfBounds 
-    match' = computeBackwardLoop (preFinals ++ preOutOfBounds) match { done = [] }
+    preFinals = nub $ concatMap (preNodes match)  $ finalScores match
+    preOutOfBounds = [] --  preNodes match OutOfBounds 
+    match' = computeBackwardLoop (preFinals ++ preOutOfBounds) [] [] match { done = [] }
 
-computeBackwardLoop :: [NodeName] -> Match -> Match
-computeBackwardLoop [] match = match
-computeBackwardLoop (nodename:nodenames) match = 
+computeBackwardLoop :: [NodeName] -> [NodeName] -> [NodeName] -> Match -> Match
+computeBackwardLoop [] [] [] match = match
+computeBackwardLoop [] retries []  match  =
+  computeBackwardLoop retries [] [] match
+computeBackwardLoop [] retries nextInLine match =
+  -- trace ("retries: " ++ show retries) $
+  computeBackwardLoop nextInLine retries []  match 
+computeBackwardLoop (nodename:nodenames) retries nextInLine match = 
   -- trace (show nodename) $
   case all (isDone match) $ sucNodes match nodename of
     True ->
-      computeBackwardLoop nodenames $ calculateNodeOutcome nodename match
+      let newNodes = (preNodes match nodename) \\ done match  in
+        -- trace ("node can be calculated " ++ show nodename ++ " newNodes: " ++ show newNodes) $
+        computeBackwardLoop nodenames (nub $ delete nodename retries) (nub $ delete nodename nextInLine ++ newNodes)  $ calculateNodeOutcome nodename match
     False ->
-      computeBackwardLoop (nodenames ++ [nodename]) match 
+      computeBackwardLoop nodenames (nodename:retries) nextInLine match 
     
 calculateNodeOutcome :: NodeName -> Match -> Match
 calculateNodeOutcome nodename match = match' { done = nodename : (done match') }
@@ -157,9 +172,15 @@ executeForward nodeName@(Standing standing) home away match = (match'''', succNo
 
 restrictStanding:: T.Standing -> NodeName
 restrictStanding (T.Fulltime, score) = Final score
-restrictStanding st@(_, (h,a)) 
-  | h > 10 || a > 10 = OutOfBounds
-  | otherwise = Standing st
+restrictStanding st@(_, score) =
+  case scoreOkay score of
+    False -> OutOfBounds
+    True -> Standing st
+
+
+scoreOkay (Plus n) = n <= maxDelta
+scoreOkay (Minus n) = n <= maxDelta
+scoreOkay _ = True
 
 insertNode :: NodeName -> Match -> Match
 insertNode OutOfBounds match = match

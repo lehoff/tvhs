@@ -16,7 +16,17 @@ data Time = FirstHalf Int
           | Fulltime
           deriving (Eq, Ord, Show)
 
-type Score = (Int, Int)
+-- type Score = (Int, Int)
+
+data Score = NilNil
+                | OneNil
+                | NilOne
+                | Even
+                | Plus Int
+                | Minus Int
+                deriving (Eq, Ord, Show)
+
+
 
 data TeamStrength =  TeamStrength { attack :: Float,
                                     defense :: Float
@@ -30,7 +40,33 @@ data WhistleProbability = NoWhistle
                         deriving (Show)
 
 initialStanding :: Standing
-initialStanding = (FirstHalf(0), (0,0))
+initialStanding = (FirstHalf(0), NilNil)
+
+pointsHome :: Score -> Int
+pointsHome NilNil = 1
+pointsHome Even = 1
+pointsHome OneNil = 3
+pointsHome (Plus _) = 3
+pointsHome _ = 0
+
+pointsAway :: Score -> Int
+pointsAway NilNil = 1
+pointsAway Even = 1
+pointsAway NilOne = 3
+pointsAway (Minus _) = 3
+pointsAway _ = 0
+
+data Result = HomeWin
+            | Draw
+            | AwayWin
+            deriving (Eq, Ord, Show)
+
+result :: Score -> Result
+result OneNil = HomeWin
+result (Plus _) = HomeWin
+result NilOne = AwayWin
+result (Minus _) = AwayWin
+result _ = Draw 
 
 liverpool :: TeamStrength
 liverpool = TeamStrength {attack = 3.216, defense = 0.355}
@@ -52,9 +88,34 @@ nextMinute (Halftime)  = SecondHalf 45
 
 updateScore :: Score -> Action -> Score
 updateScore score None = score
-updateScore (h, a) Both = (h+1, a+1)
-updateScore (h, a) Home = (h+1, a)
-updateScore (h, a) Away = (h, a+1)
+
+updateScore NilNil Both = Even
+updateScore NilNil Home = OneNil
+updateScore NilNil Away = NilOne
+
+updateScore OneNil Both = Plus 1
+updateScore OneNil Home = Plus 2
+updateScore OneNil Away = Even
+
+updateScore NilOne Both = Minus 1
+updateScore NilOne Home = Even
+updateScore NilOne Away = Minus 2
+
+updateScore Even Both = Even
+updateScore Even Home = Plus 1
+updateScore Even Away = Minus 1
+
+updateScore sc@(Plus _) Both = sc
+updateScore (Plus 1) Away = Even
+updateScore (Plus n) Away = Plus $ n-1
+updateScore (Plus n) Home = Plus $ n+1
+
+updateScore sc@(Minus _) Both = sc
+updateScore (Minus 1) Home = Even
+updateScore (Minus n) Home = Minus $ n-1
+updateScore (Minus n) Away = Minus $ n+1
+
+updateScore score action = error ("wrong updateScore args: " ++ (show score) ++ " " ++ (show action))
 
 next :: TeamStrength -> TeamStrength -> Standing -> [(Action, Float)]
 next home away (Halftime, score) = next home away (nextMinute Halftime, score) 
@@ -125,26 +186,26 @@ lambda :: Float -> Score -> Int -> Float
 lambda base score m =
   base * (lambda_xy score) * (xi_1 m)
   where
-    lambda_xy (1, 0) = 0.86
-    lambda_xy (0, 1) = 1.10
-    lambda_xy (x, y)
-      | x == y = 1.0
-      | x > y && x > 1 = 1.53
-      | otherwise = 1.13
+    lambda_xy OneNil = 0.86
+    lambda_xy NilOne = 1.10
+    lambda_xy (Plus _) = 1.01
+    lambda_xy (Minus _) = 1.13
+    lambda_xy _ = 1.0
     xi_1 :: Int -> Float  
     xi_1 m = (xi1 + fromIntegral m)/90.0
     xi1 = 0.67
+
+
 
 mu :: Float -> Score -> Int -> Float
 mu base score m =
   base * (mu_xy score) * (xi_2 m)
   where
-    mu_xy (1,0) = 1.33
-    mu_xy (0,1) = 1.07
-    mu_xy (x,y)
-      | x == y = 1.00
-      | x > y && x > 1 = 1.53
-      | otherwise = 1.16
+    mu_xy OneNil = 1.33
+    mu_xy NilOne = 1.07
+    mu_xy (Plus _) = 1.53
+    mu_xy (Minus _) = 1.16
+    mu_xy _ = 1.0
     xi_2 m = (xi2 + fromIntegral m)/90
     xi2 = 0.47
 
