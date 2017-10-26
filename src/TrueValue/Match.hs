@@ -45,7 +45,7 @@ finalNode score =
 
     
 computeMatch :: T.TeamStrength -> T.TeamStrength -> Match
-computeMatch home away = forward
+computeMatch home away = final
   where
     forward = computeForward home away initialMatch
     final = computeBackward forward 
@@ -99,21 +99,22 @@ computeForward home away match = computeForwardLoop [Standing T.initialStanding]
 computeBackward :: Match -> Match
 computeBackward match = match'
   where
-    preFinals = concat . map (preNodes match)  $ finalScores match
-    preOutOfBounds = trace ("preFinals:" ++ show preFinals) $ preNodes match OutOfBounds 
+    preFinals = concatMap (preNodes match)  $ finalScores match
+    preOutOfBounds =  preNodes match OutOfBounds 
     match' = computeBackwardLoop (preFinals ++ preOutOfBounds) match { done = [] }
 
 computeBackwardLoop :: [NodeName] -> Match -> Match
 computeBackwardLoop [] match = match
 computeBackwardLoop (nodename:nodenames) match = 
-  trace (show nodename) $ case all (isDone match) $ sucNodes match nodename of
+  -- trace (show nodename) $
+  case all (isDone match) $ sucNodes match nodename of
     True ->
       computeBackwardLoop nodenames $ calculateNodeOutcome nodename match
     False ->
       computeBackwardLoop (nodenames ++ [nodename]) match 
     
 calculateNodeOutcome :: NodeName -> Match -> Match
-calculateNodeOutcome nodename match = match'
+calculateNodeOutcome nodename match = match' { done = nodename : (done match') }
   where
     context = getNodeContext match nodename
     (preAdj, node, label, sucAdj) = context
@@ -122,7 +123,8 @@ calculateNodeOutcome nodename match = match'
     scaledOutcomes = (map (\(out, prob) -> Outcome.multiply out prob) outcomesAndProbs)
     outcome = Outcome.add scaledOutcomes
     newContext = (preAdj, node, (nodename, outcome), sucAdj)
-    match' = trace (show newContext) $ updateNode newContext match 
+    match' = -- trace (show newContext) $
+      updateNode newContext match 
                            
     
 computeForwardLoop :: [NodeName] -> T.TeamStrength -> T.TeamStrength -> Match -> Match
