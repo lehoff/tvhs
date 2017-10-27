@@ -28,9 +28,9 @@ points :: Outcome -> (Float, Float)
 points outcome = (hp, ap)
   where
     dist = distribution outcome
-    draws = dist Map.! T.Draw
-    homewins = dist Map.! T.HomeWin
-    awaywins = dist Map.! T.AwayWin
+    draws = Map.findWithDefault 0.0 T.Draw dist
+    homewins = Map.findWithDefault 0.0 T.HomeWin dist
+    awaywins = Map.findWithDefault 0.0 T.AwayWin dist 
     hp = 3 * homewins + draws
     ap = 3 * awaywins + draws
     
@@ -44,3 +44,9 @@ distribution outcome = d
     resultMaps = map ( uncurry Map.singleton) results
     d = Map.unionsWith (+) resultMaps
     
+-- mapLookup key map =
+--   case Map.lookup key map of
+--     Nothing ->
+--       error "mapLookup failed on " ++ show key
+--     Just v ->
+--       v

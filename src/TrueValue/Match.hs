@@ -216,7 +216,12 @@ insertEdge match name1 name2 prob = match'
 
 lookupNode :: NodeName -> Match -> Int
 lookupNode name match =
-   nodes match Map.! name
+--   nodes match Map.! name
+  case Map.lookup name $ nodes match of
+    Nothing ->
+      error $ "lookupNode failed on: " ++ show name
+    Just id ->
+      id
 
 nodenameForIndex :: Match -> Int -> NodeName
 nodenameForIndex match index = name

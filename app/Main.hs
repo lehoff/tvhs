@@ -2,9 +2,10 @@ module Main where
 
 import TrueValue.Transitions as T
 import TrueValue.Match as M
+import TrueValue.Goal as Goal
 
 main :: IO ()
-main = print $ M.getNodeContext match lastMinute -- (length $ nodes match)
+main = print $ "v1: " ++ show v1 ++ " v2: " ++ show v2
   where
-    match = M.computeMatch T.liverpool T.leicester
-    lastMinute = M.Standing (T.SecondHalf 45,T.NilNil)
+    v1 = Goal.value (0,0) Goal.Home 1
+    v2 = Goal.value (2,1) Goal.Away 50
