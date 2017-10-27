@@ -15,8 +15,10 @@ type ScoreTuple = (Int, Int)
 
 data Scorer = Home
             | Away
+            deriving (Show, Eq)
 
 data Goal = Goal T.Score Scorer T.Time
+  deriving (Show, Eq)
 
 
 value :: ScoreTuple -> Scorer -> Int -> Float
@@ -35,13 +37,15 @@ values currentScore scorer minutes =
 
 valueMatch :: M.Match -> ScoreTuple -> Scorer -> Int -> Float
 valueMatch match scoreTuple scorer t =
-  valueMatch' match score scorer time
+  valueMatch' match goal
   where
     score = tupleToScore scoreTuple
     time  = intToTime t
+    goal  = Goal score scorer time
     
-valueMatch' :: M.Match -> T.Score -> Scorer -> T.Time -> Float
-valueMatch' match curSc scorer time = v
+
+valueMatch' :: M.Match -> Goal -> Float
+valueMatch' match (Goal curSc scorer time) = v
   where
     newSc = nextScore curSc scorer
     curNode = M.Standing (time, curSc)
@@ -55,14 +59,15 @@ valuesMatch match scoreTuple scorer ts = vals'
   where
     score = tupleToScore scoreTuple
     times = map intToTime ts
-    vals =  valuesMatch' match score scorer times 
+    goalMaker = Goal score scorer 
+    vals =  valuesMatch' match goalMaker times 
     vals' = map (\(t, v) -> (timeToInt t, v)) vals
 
-valuesMatch' :: M.Match -> T.Score -> Scorer -> [T.Time] -> [(T.Time, Float)]
-valuesMatch' match currentScore scorer minutes = vs 
+valuesMatch' :: M.Match -> (T.Time -> Goal) -> [T.Time] -> [(T.Time, Float)]
+valuesMatch' match goalMaker minutes = vs 
   where
-    val = valueMatch' match currentScore scorer
-    vals = map val minutes
+    f time = valueMatch' match (goalMaker time)  
+    vals = map f minutes
     vs = zip minutes vals
 
 points (old, _) (new, _) Home = new - old
