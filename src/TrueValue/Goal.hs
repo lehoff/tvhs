@@ -21,12 +21,28 @@ data Goal = Goal T.Score Scorer T.Time
   deriving (Show, Eq)
 
 
-value :: ScoreTuple -> Scorer -> Int -> Float
-value currentScore scorer t = v 
-  where
-    foldFun match acc = acc + valueMatch match currentScore scorer t 
-    v = (Map.foldr foldFun 0.0 League.results) / fromIntegral (Map.size League.results)
+home :: T.Score -> T.Time -> Goal
+home score time = Goal score Home time
 
+away :: T.Score -> T.Time -> Goal
+away score time = Goal score Away time
+
+value :: ScoreTuple -> Scorer -> Int -> Float
+value currentScore scorer t =
+  value' $ mkGoal currentScore scorer t
+
+mkGoal :: ScoreTuple -> Scorer -> Int -> Goal
+mkGoal scoreTuple scorer t =
+  Goal score scorer time
+  where
+    score = tupleToScore scoreTuple
+    time  = intToTime t 
+
+value' :: Goal -> Float
+value' goal = v
+  where
+    foldFun match acc = acc + valueMatch' match goal
+    v = (Map.foldr foldFun 0.0 League.results) / fromIntegral (Map.size League.results)
 
 
 values :: ScoreTuple -> Scorer -> [Int] -> [(Int, Float)]
@@ -34,14 +50,17 @@ values currentScore scorer minutes =
   [ (minute, value currentScore scorer minute)
   | minute <- minutes ]
 
+values' :: (T.Time -> Goal) -> [T.Time] -> [(T.Time, Float)]
+values' goalMaker times = vs
+  where
+    f time = value' $ goalMaker time
+    vals = map f times
+    vs = zip times vals
+  
 
 valueMatch :: M.Match -> ScoreTuple -> Scorer -> Int -> Float
 valueMatch match scoreTuple scorer t =
-  valueMatch' match goal
-  where
-    score = tupleToScore scoreTuple
-    time  = intToTime t
-    goal  = Goal score scorer time
+  valueMatch' match $ mkGoal scoreTuple scorer t
     
 
 valueMatch' :: M.Match -> Goal -> Float
