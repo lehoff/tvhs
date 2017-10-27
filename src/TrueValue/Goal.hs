@@ -16,6 +16,9 @@ type ScoreTuple = (Int, Int)
 data Scorer = Home
             | Away
 
+data Goal = Goal T.Score Scorer T.Time
+
+
 value :: ScoreTuple -> Scorer -> Int -> Float
 value currentScore scorer t = v 
   where
@@ -23,17 +26,24 @@ value currentScore scorer t = v
     v = (Map.foldr foldFun 0.0 League.results) / fromIntegral (Map.size League.results)
 
 
+
 values :: ScoreTuple -> Scorer -> [Int] -> [(Int, Float)]
 values currentScore scorer minutes =
   [ (minute, value currentScore scorer minute)
   | minute <- minutes ]
 
+
 valueMatch :: M.Match -> ScoreTuple -> Scorer -> Int -> Float
-valueMatch match currentScore scorer t = v
+valueMatch match scoreTuple scorer t =
+  valueMatch' match score scorer time
   where
-    curSc = tupleToScore currentScore
+    score = tupleToScore scoreTuple
+    time  = intToTime t
+    
+valueMatch' :: M.Match -> T.Score -> Scorer -> T.Time -> Float
+valueMatch' match curSc scorer time = v
+  where
     newSc = nextScore curSc scorer
-    time = intToTime t
     curNode = M.Standing (time, curSc)
     newNode = M.Standing (time, newSc)
     oldPoints = Outcome.points $ M.getNodeOutcome match curNode
@@ -41,9 +51,17 @@ valueMatch match currentScore scorer t = v
     v = points oldPoints newPoints scorer
 
 valuesMatch :: M.Match -> ScoreTuple -> Scorer -> [Int] -> [(Int, Float)]
-valuesMatch match currentScore scorer minutes = vs 
+valuesMatch match scoreTuple scorer ts = vals'
   where
-    val = valueMatch match currentScore scorer
+    score = tupleToScore scoreTuple
+    times = map intToTime ts
+    vals =  valuesMatch' match score scorer times 
+    vals' = map (\(t, v) -> (timeToInt t, v)) vals
+
+valuesMatch' :: M.Match -> T.Score -> Scorer -> [T.Time] -> [(T.Time, Float)]
+valuesMatch' match currentScore scorer minutes = vs 
+  where
+    val = valueMatch' match currentScore scorer
     vals = map val minutes
     vs = zip minutes vals
 
@@ -69,6 +87,11 @@ intToTime :: Int -> T.Time
 intToTime n
   | n < 46 = T.FirstHalf n
   | otherwise = T.SecondHalf n
+
+timeToInt :: T.Time -> Int
+timeToInt (T.FirstHalf n) = min n 45
+timeToInt (T.SecondHalf n) = min n 90
+
 
 minutesStep :: Int -> [Int]
 minutesStep 1 = [1..97]
