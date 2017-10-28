@@ -25,7 +25,7 @@ data Match = Match
   , graph :: Graph.Gr Label Float}
   deriving (Show)
 
-maxDelta = 6
+maxDelta = 8
 
 type Context = Graph.Context Label Float
 
@@ -137,7 +137,11 @@ calculateNodeOutcome nodename match = match' { done = nodename : (done match') }
     outcomesAndProbs = map (\(prob, node) -> (outcomeForIndex node g, prob)) sucAdj
     scaledOutcomes = (map (\(out, prob) -> Outcome.multiply out prob) outcomesAndProbs)
     outcome = Outcome.add scaledOutcomes
-    newContext = (preAdj, node, (nodename, outcome), sucAdj)
+    -- those edges going to OutOfBounds needs to be factored into the total
+    -- probability for the current node
+    adjustment = sum [ prob | (prob,  n) <- sucAdj,  nodenameForIndex match n == OutOfBounds ]
+    outcome' = Outcome.multiply outcome (1 / (1-adjustment))
+    newContext = (preAdj, node, (nodename, outcome'), sucAdj)
     match' = -- trace (show newContext) $
       updateNode newContext match 
                            
