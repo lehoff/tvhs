@@ -21,11 +21,14 @@ data Goal = Goal T.Score Scorer T.Time
   deriving (Show, Eq)
 
 
-home :: T.Score -> T.Time -> Goal
-home score time = Goal score Home time
+home :: ScoreTuple -> Int -> Goal
+home currentScore time =
+  mkGoal currentScore Home time
 
-away :: T.Score -> T.Time -> Goal
-away score time = Goal score Away time
+away :: ScoreTuple -> Int -> Goal
+away currentScore time =
+  mkGoal currentScore Away time
+
 
 value :: ScoreTuple -> Scorer -> Int -> Float
 value currentScore scorer t =

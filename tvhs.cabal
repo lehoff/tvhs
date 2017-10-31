@@ -20,6 +20,9 @@ library
                        TrueValue.MatchReader
   build-depends:       base >= 4.7 && < 5
                      , fgl
+                     , parsec
+                     , parsec-numbers
+                     , MissingH
                      , containers
   default-language:    Haskell2010
 
