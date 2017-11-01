@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleInstances #-}
 module TrueValue.Match
   where
 
@@ -10,20 +12,26 @@ import Data.Tuple
 import Data.List
 import Debug.Trace
 
+import Data.Binary
+import GHC.Generics
 
 data NodeName = OutOfBounds
               | Standing T.Standing
               | Final T.Score
-              deriving (Eq, Ord, Show)
+              deriving (Eq, Ord, Show, Generic)
 
-type Label = (NodeName, Outcome.Outcome)
+type Label = (NodeName, Outcome.Outcome) 
 
 data Match = Match 
   { finalScores :: [NodeName]
   , nodes :: Map.Map NodeName Int
   , done :: [NodeName]
   , graph :: Graph.Gr Label Float}
-  deriving (Show)
+  deriving (Show, Generic)
+
+instance Binary Match
+instance Binary (Graph.Gr Label Float)
+instance Binary NodeName
 
 maxDelta = 8
 

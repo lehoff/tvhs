@@ -1,5 +1,15 @@
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleInstances #-}
+
+
 module TrueValue.Transitions
 where
+
+import Data.Binary
+import GHC.Generics
+
+
+
 
 data WhistleTime = WHalftime | WFulltime deriving (Show)
 
@@ -14,7 +24,8 @@ data Time = FirstHalf Int
           | Halftime
           | SecondHalf Int
           | Fulltime
-          deriving (Eq, Ord, Show)
+          deriving (Eq, Ord, Show, Generic)
+instance Binary Time
 
 -- type Score = (Int, Int)
 
@@ -24,7 +35,8 @@ data Score = NilNil
                 | Even
                 | Plus Int
                 | Minus Int
-                deriving (Eq, Ord, Show)
+                deriving (Eq, Ord, Show, Generic)
+instance Binary Score
 
 
 
