@@ -16,12 +16,16 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:     TrueValue.Transitions, TrueValue.Match, TrueValue.Outcome,
-                       TrueValue.Goal, TrueValue.Teams, TrueValue.League
+                       TrueValue.Goal, TrueValue.Teams, TrueValue.League,
+                       TrueValue.MatchReader
   build-depends:       base >= 4.7 && < 5
                      , fgl
                      , containers
                      , binary
                      , bytestring
+                     , MissingH
+                     , parsec
+                     , parsec-numbers
   default-language:    Haskell2010
 
 executable tvhs

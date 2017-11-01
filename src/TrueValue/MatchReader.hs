@@ -10,10 +10,12 @@ import Text.ParserCombinators.Parsec
 import Text.ParserCombinators.Parsec.Number
 import Data.String.Utils
 
-import TrueValue.Goal as Goal
+import qualified TrueValue.Goal as Goal
 
-data GoalScore = GoalScore Int Int String Int 
-               | OwnGoal Int Int Int 
+import qualified TrueValue.Transitions as T
+
+data GoalScore = GoalScore Int Int String T.Time 
+               | OwnGoal Int Int T.Time
                deriving (Show)
 type Goals = Maybe [GoalScore]
 
@@ -74,8 +76,11 @@ namePart = do
 minute = do
     n <- nat 
     char '\''
-    return n
+    extra <-   option 0 $ (char '+') *> nat
+    return $ convertMinuteExtra n extra
 
+convertMinuteExtra 45 e = T.FirstHalf $ 45+e
+convertMinuteExtra 90 e = T.SecondHalf $ 90+e
 
 
 
@@ -84,7 +89,7 @@ convertGoals Nothing = []
 convertGoals (Just gs) = goals
   where 
     goalTuples = convert (0,0) gs
-    goals = [ Goal.mkGoal sc who when | (sc, who, when) <- goalTuples ]
+    goals = [ Goal.mkGoal' sc who when | (sc, who, when) <- goalTuples ]
 
 convert sc ((OwnGoal h a _):rest) = convert (h,a) rest
 convert sc ((GoalScore h a name m):rest) = g : convert newSc rest

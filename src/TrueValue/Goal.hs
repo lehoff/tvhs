@@ -36,10 +36,14 @@ value results currentScore scorer t =
 
 mkGoal :: ScoreTuple -> Scorer -> Int -> Goal
 mkGoal scoreTuple scorer t =
+  mkGoal' scoreTuple scorer $ intToTime t
+
+mkGoal' :: ScoreTuple -> Scorer -> T.Time -> Goal
+mkGoal' scoreTuple scorer time =
   Goal score scorer time
   where
     score = tupleToScore scoreTuple
-    time  = intToTime t 
+
 
 value' :: League.Results -> Goal -> Float
 value' results goal = v
